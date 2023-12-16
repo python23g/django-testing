@@ -1,5 +1,37 @@
 from django.test import TestCase
 from .models import Animal
+from base64 import b64encode
+from django.contrib.auth.models import User
+
+
+class LoginTestCase(TestCase):
+
+    def setUp(self): 
+        user = User(username='admin')
+        user.set_password('1234')
+        user.save()
+
+    def test_login(self):
+
+        auth_headers = {
+            'Authorization': 'Basic ' + b64encode(b"admin:1234").decode("ascii"),
+        }
+        
+        response = self.client.post('/api/login/', headers=auth_headers)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"message": "you are loged in."})
+
+    def test_login_401(self):
+
+        auth_headers = {
+            'Authorization': 'Basic ' + b64encode(b"admin:4343").decode("ascii"),
+        }
+        
+        response = self.client.post('/api/login/', headers=auth_headers)
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {"error": "credential error."})
 
 
 class AnimalTestCase(TestCase):
