@@ -1,39 +1,42 @@
-from django.views import View
-from django.http import HttpRequest, JsonResponse
+from rest_framework.views import APIView
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 from django.forms import model_to_dict
 from django.contrib.auth import authenticate
 from base64 import b64decode
 import json
 from .models import Animal
+from .serializers import AnimalSerializer
 
 
-class LoginView(View):
 
-    def post(self, request: HttpRequest) -> JsonResponse:
-        auth = request.headers['Authorization'].split()[-1]
-        username, password = b64decode(auth).decode().split(':')
+class LoginView(APIView):
 
-        user = authenticate(username=username, password=password)
-        if user:
-            return JsonResponse({"message": "you are loged in."}, status=200)
+    authentication_classes = [BaseAuthentication]
+    permission_classes = [IsAuthenticated]
 
-        return JsonResponse({"error": "credential error."}, status=401)
+    def post(self, request: Request) -> Response:
+        return Response({"message": "you are loged in."}, status=status.HTTP_200_OK)
 
-class AnimalsView(View):
 
-    def get(self, request: HttpRequest) -> JsonResponse:
-        animals = []
-        for animal in Animal.objects.all():
-            animals.append(model_to_dict(animal))
+class AnimalsView(APIView):
 
-        return JsonResponse({'animals': animals}, status=200)
+    authentication_classes = [BaseAuthentication]
+    permission_classes = [IsAuthenticated]
 
-    def post(self, request: HttpRequest) -> JsonResponse:
-        data = json.loads(request.body.decode())
+    def get(self, request: Request) -> Response:
+        animals = AnimalSerializer(Animal.objects.all(), many=True)
 
-        if data.get('name') is None or data.get('sound') is None:
-            return JsonResponse({'error': 'invalid data.'}, status=400)
+        return Response({'animals': animals.data}, status=status.HTTP_200_OK)
 
-        animal = Animal.objects.create(name=data['name'], sound=data['sound'])
+    def post(self, request: Request) -> Response:
+        serializer = AnimalSerializer(data=request.data)
 
-        return JsonResponse(model_to_dict(animal), status=201)
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

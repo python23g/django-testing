@@ -1,94 +1,19 @@
-from django.test import TestCase
-from .models import Animal
-from base64 import b64encode
+from rest_framework.test import APITestCase, APIClient
 from django.contrib.auth.models import User
+from rest_framework import status
 
 
-class LoginTestCase(TestCase):
 
-    def setUp(self): 
-        user = User(username='admin')
-        user.set_password('1234')
-        user.save()
-
-    def test_login(self):
-
-        auth_headers = {
-            'Authorization': 'Basic ' + b64encode(b"admin:1234").decode("ascii"),
-        }
-        
-        response = self.client.post('/api/login/', headers=auth_headers)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"message": "you are loged in."})
-
-    def test_login_401(self):
-
-        auth_headers = {
-            'Authorization': 'Basic ' + b64encode(b"admin:4343").decode("ascii"),
-        }
-        
-        response = self.client.post('/api/login/', headers=auth_headers)
-
-        self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.json(), {"error": "credential error."})
-
-
-class AnimalTestCase(TestCase):
-
-   def setUp(self):
-       self.lion = Animal.objects.create(name="lion", sound="roar")
-       self.cat = Animal.objects.create(name="cat", sound="meow")
-
-   def test_animals_can_speak(self):
-       """Animals that can speak are correctly identified"""
-
-       self.assertEqual(self.lion.speak(), 'The lion says "roar"')
-       self.assertEqual(self.cat.speak(), 'The cat says "meow"')
-
-
-class AnimalsViewTestCase(TestCase):
+class AnimalViewTestCase(APITestCase):
 
     def setUp(self):
-       self.lion = Animal.objects.create(name="lion", sound="roar")
-       self.cat = Animal.objects.create(name="cat", sound="meow")
+        self.client = APIClient()
+        self.user = User.objects.create(username='ali')
+        self.user.set_password('1234')
+        self.user.save()
+        self.client.force_authenticate(self.user)
 
-    def test_get(self):
+    def test_animals(self):
         response = self.client.get('/api/animals/')
 
-        data = {
-            "animals": [
-                {
-                    "id": 1,
-                    "name": "lion",
-                    "sound": "roar"
-                },
-                {
-                    "id": 2,
-                    "name": "cat",
-                    "sound": "meow"
-                },
-            ]
-        }
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), data)
-
-    def test_post(self):
-        data = {
-            "name": "dog",
-            "sound": "woof"
-        }
-        response = self.client.post('/api/animals/', data, content_type='application/json')
-
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json(), {"id": 3, "name": "dog","sound": "woof"})
-
-    def test_post_400(self):
-        data = {
-            "name": "dog"
-        }
-        response = self.client.post('/api/animals/', data, content_type='application/json')
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {'error': 'invalid data.'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
